@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 @Data
-public class FortniteComesticResponse {
+public class FortniteNewComesticResponse {
 
     private DataWrapper data;
 

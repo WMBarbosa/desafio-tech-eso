@@ -34,10 +34,14 @@ public class WebClientConfig implements WebMvcConfigurer {
 
     @Bean
     public WebClient fortniteWebClient() {
+        int maxInMemorySize = 16 * 1024 * 1024; // 16 MB
         WebClient.Builder builder = WebClient.builder()
                 .baseUrl(fortniteApiBaseUrl)
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
+                .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
+                .exchangeStrategies(org.springframework.web.reactive.function.client.ExchangeStrategies.builder()
+                        .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(maxInMemorySize))
+                        .build());
 
         // Adiciona API Key apenas se existir
         if (fortniteApiKey != null && !fortniteApiKey.isEmpty()) {

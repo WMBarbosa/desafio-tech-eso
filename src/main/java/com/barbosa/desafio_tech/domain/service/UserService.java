@@ -1,14 +1,9 @@
 package com.barbosa.desafio_tech.domain.service;
 
-import com.barbosa.desafio_tech.domain.dto.ComesticDTO;
 import com.barbosa.desafio_tech.domain.dto.UserDTO;
-import com.barbosa.desafio_tech.domain.entities.Transaction;
 import com.barbosa.desafio_tech.domain.entities.User;
-import com.barbosa.desafio_tech.domain.entities.UserCosmetic;
 import com.barbosa.desafio_tech.domain.entities.enums.Type;
 import com.barbosa.desafio_tech.domain.mappers.UserMapper;
-import com.barbosa.desafio_tech.domain.repository.TransactionRepository;
-import com.barbosa.desafio_tech.domain.repository.UserComesticRepository;
 import com.barbosa.desafio_tech.domain.repository.UserRepository;
 import com.barbosa.desafio_tech.domain.service.serviceException.DatabaseException;
 import com.barbosa.desafio_tech.domain.service.serviceException.ResourceNotFoundException;
@@ -21,9 +16,6 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityNotFoundException;
-
-import java.util.List;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +31,7 @@ public class UserService {
     public UserDTO getById(Long id) {
         return userRepository.findById(id)
                 .map(userMapper::toDto)
-                .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException(id));
     }
 
     @Transactional(readOnly = true)
@@ -63,10 +55,10 @@ public class UserService {
     }
 
     @Transactional
-    public UserDTO update(Long id, UserDTO payload) {
+    public UserDTO update(Long id, UserDTO userDTO) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
-        updateData(user, payload);
+        updateData(user, userDTO);
         return userMapper.toDto(userRepository.save(user));
     }
 

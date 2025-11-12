@@ -1,7 +1,8 @@
 package com.barbosa.desafio_tech.domain.service;
 
 import com.barbosa.desafio_tech.domain.dto.ComesticDTO;
-import com.barbosa.desafio_tech.domain.response.FortniteComesticResponse;
+import com.barbosa.desafio_tech.domain.response.FortniteNewComesticResponse;
+import com.barbosa.desafio_tech.domain.response.FortniteShopResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,7 @@ public class FortniteApiService {
     }
 
     public List<ComesticDTO> getShopItems() {
-        return fetchCosmetics("/shop/br", true);
+        return fetchShop("/shop", true);
     }
 
     public ComesticDTO getCosmeticById(String id) {
@@ -61,7 +62,7 @@ public class FortniteApiService {
             return fortniteWebClient.get()
                     .uri(path)
                     .retrieve()
-                    .bodyToMono(FortniteComesticResponse.class)
+                    .bodyToMono(FortniteNewComesticResponse.class)
                     .timeout(DEFAULT_TIMEOUT)
                     .map(response -> mapCosmetics(response.getData().getItems(), markAsSale))
                     .blockOptional()
@@ -70,6 +71,43 @@ public class FortniteApiService {
             log.warn("Falha ao consultar {} na API do Fortnite", path, ex);
             return List.of();
         }
+    }
+
+    private List<ComesticDTO> fetchShop(String path, boolean markAsSale) {
+        try {
+            return fortniteWebClient.get()
+                    .uri(path)
+                    .retrieve()
+                    .bodyToMono(FortniteShopResponse.class)
+                    .timeout(DEFAULT_TIMEOUT)
+                    .map(response -> {
+                        var entries = response.getData() != null ? response.getData().getEntries() : List.<FortniteShopResponse.StoreEntry>of();
+                        return entries.stream()
+                                .map(entry -> mapCosmeticShop(entry, markAsSale))
+                                .filter(Objects::nonNull)
+                                .toList();
+                    })
+                    .blockOptional()
+                    .orElse(List.of());
+        } catch (Exception ex) {
+            log.warn("Falha ao consultar {} na API do Fortnite", path, ex);
+            return List.of();
+        }
+    }
+
+    private ComesticDTO mapCosmeticShop(FortniteShopResponse.StoreEntry entry, boolean markAsSale) {
+        if (entry == null) {
+            return null;
+        }
+
+        return ComesticDTO.builder()
+                .id(entry.getOfferId())
+                .name(entry.getDevName())
+                .price(entry.getFinalPrice())
+                .isNew(entry.getInDate() != null && entry.getOutDate() == null)
+                .isOnSale(markAsSale)
+                .imageUrl(entry.getNewDisplayAssetPath())
+                .build();
     }
 
 
@@ -85,6 +123,9 @@ public class FortniteApiService {
                 .map(dto -> markAsSale ? withSaleFlag(dto) : dto)
                 .collect(Collectors.toList());
     }
+
+
+
 
 
     private ComesticDTO mapCosmetic(Map<String, Object> item) {
