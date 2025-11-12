@@ -1,5 +1,6 @@
 package com.barbosa.desafio_tech.domain.entities;
 
+import com.barbosa.desafio_tech.domain.entities.enums.Type;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -24,21 +25,19 @@ public class Transaction {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
-    private Type type; // CREDIT_INITIAL, PURCHASE, REFUND
+    private Type type;
 
     @Column(nullable = false)
-    private Integer amount; // positivo para crédito, negativo para débito
+    private Integer amount;
 
     @Column(name = "balance_after", nullable = false)
     private Integer balanceAfter;
 
     @Column(name = "reference_id")
-    private String referenceId; // id do item/compra opcional
+    private String referenceId;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    public enum Type {
-        CREDIT_INITIAL, PURCHASE, REFUND
-    }
+
 }

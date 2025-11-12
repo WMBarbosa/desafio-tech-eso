@@ -19,10 +19,10 @@ public class UserDTO {
 
 
     public UserDTO(User user) {
-        UserDTO dto = new UserDTO();
-        dto.setId(user.getId());
-        dto.setName(user.getName());
-        dto.setEmail(user.getEmail());
-        dto.setVbucks(user.getVbucks());
+        this.id = user.getId();
+        this.name = user.getName();
+        this.email = user.getEmail();
+        this.vbucks = user.getVbucks();
+        this.password = user.getPassword();
     }
 }

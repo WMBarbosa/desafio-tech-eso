@@ -1,13 +1,14 @@
 package com.barbosa.desafio_tech.domain.service;
 
 import com.barbosa.desafio_tech.domain.dto.ComesticDTO;
-import lombok.Data;
+import com.barbosa.desafio_tech.domain.response.FortniteComesticResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
-import java.util.ArrayList;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -15,140 +16,92 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class FortniteApiService {
+
+    private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(5);
 
     private final WebClient fortniteWebClient;
 
     public List<ComesticDTO> getAllCosmetics() {
-        FortniteResponse response = fortniteWebClient
-                .get()
-                .uri("/cosmetics/br")
-                .retrieve()
-                .bodyToMono(FortniteResponse.class)
-                .onErrorResume(ex -> Mono.just(new FortniteResponse()))
-                .block();
-
-        return mapCosmetics(response);
+        return fetchCosmetics("/cosmetics/br", false);
     }
 
     public List<ComesticDTO> getNewCosmetics() {
-        FortniteResponse response = fortniteWebClient
-                .get()
-                .uri("/cosmetics/new")
-                .retrieve()
-                .bodyToMono(FortniteResponse.class)
-                .onErrorResume(ex -> Mono.just(new FortniteResponse()))
-                .block();
-
-        return mapCosmetics(response);
+        return fetchCosmetics("/cosmetics/new", false);
     }
 
     public List<ComesticDTO> getShopItems() {
-        FortniteResponse response = fortniteWebClient
-                .get()
-                .uri("/shop/br")
-                .retrieve()
-                .bodyToMono(FortniteResponse.class)
-                .onErrorResume(ex -> Mono.just(new FortniteResponse()))
-                .block();
-
-        List<ComesticDTO> list = mapCosmetics(response);
-        return list.stream().map(c -> {
-            ComesticDTO d = ComesticDTO.builder()
-                    .id(c.getId())
-                    .name(c.getName())
-                    .type(c.getType())
-                    .rarity(c.getRarity())
-                    .imageUrl(c.getImageUrl())
-                    .price(c.getPrice())
-                    .isNew(c.getIsNew())
-                    .isOnSale(true)
-                    .build();
-            return d;
-        }).collect(Collectors.toList());
+        return fetchCosmetics("/shop/br", true);
     }
 
     public ComesticDTO getCosmeticById(String id) {
-        Map response = fortniteWebClient
+        if (id == null || id.isBlank()) {
+            return null;
+        }
+
+        return fortniteWebClient
                 .get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/cosmetics/br/{id}")
-                        .build(id))
+                .uri(uriBuilder -> uriBuilder.path("/cosmetics/br/{id}").build(id))
                 .retrieve()
-                .bodyToMono(Map.class)
-                .block();
-
-        if (response == null) return null;
-        Object data = response.get("data");
-        if (data instanceof Map dataMap) {
-            return mapCosmetic(dataMap);
-        }
-        return null;
+                .bodyToMono(FortniteSingleResponse.class)
+                .timeout(DEFAULT_TIMEOUT)
+                .map(FortniteSingleResponse::data)
+                .map(this::mapCosmetic)
+                .onErrorResume(ex -> {
+                    log.warn("Falha ao consultar cosmetic {} na API do Fortnite", id, ex);
+                    return Mono.empty();
+                })
+                .blockOptional()
+                .orElse(null);
     }
 
-    private List<ComesticDTO> mapCosmetics(FortniteResponse response) {
-        if (response == null || response.data == null) return List.of();
-        List<ComesticDTO> result = new ArrayList<>();
-        for (Object obj : response.data) {
-            if (obj instanceof Map map) {
-                result.add(mapCosmetic(map));
-            }
+    private List<ComesticDTO> fetchCosmetics(String path, boolean markAsSale) {
+        try {
+            return fortniteWebClient.get()
+                    .uri(path)
+                    .retrieve()
+                    .bodyToMono(FortniteComesticResponse.class)
+                    .timeout(DEFAULT_TIMEOUT)
+                    .map(response -> mapCosmetics(response.getData().getItems(), markAsSale))
+                    .blockOptional()
+                    .orElse(List.of());
+        } catch (Exception ex) {
+            log.warn("Falha ao consultar {} na API do Fortnite", path, ex);
+            return List.of();
         }
-        return result;
     }
 
-    @SuppressWarnings("unchecked")
-    private ComesticDTO mapCosmetic(Map item) {
+
+    private List<ComesticDTO> mapCosmetics(Map<String, List<Map<String, Object>>> itemsMap, boolean markAsSale) {
+        if (itemsMap == null || itemsMap.isEmpty()) {
+            return List.of();
+        }
+
+        return itemsMap.values().stream()
+                .flatMap(List::stream)
+                .map(this::mapCosmetic)
+                .filter(Objects::nonNull)
+                .map(dto -> markAsSale ? withSaleFlag(dto) : dto)
+                .collect(Collectors.toList());
+    }
+
+
+    private ComesticDTO mapCosmetic(Map<String, Object> item) {
+        if (item == null || item.isEmpty()) {
+            return null;
+        }
+
         String id = Objects.toString(item.get("id"), null);
         String name = Objects.toString(item.get("name"), null);
 
-        String type = null;
-        Object typeObj = item.get("type");
-        if (typeObj instanceof Map typeMap) {
-            type = Objects.toString(typeMap.get("value"), null);
-        } else if (typeObj != null) {
-            type = typeObj.toString();
-        }
+        String type = extractValue(item.get("type"));
+        String rarity = extractValue(item.get("rarity"));
+        String imageUrl = extractImageUrl(item.get("images"));
 
-        String rarity = null;
-        Object rarityObj = item.get("rarity");
-        if (rarityObj instanceof Map rMap) {
-            rarity = Objects.toString(rMap.get("value"), null);
-        } else if (rarityObj != null) {
-            rarity = rarityObj.toString();
-        }
-
-        String imageUrl = null;
-        Object imagesObj = item.get("images");
-        if (imagesObj instanceof Map imgMap) {
-            imageUrl = Objects.toString(imgMap.get("icon"), null);
-            if (imageUrl == null) imageUrl = Objects.toString(imgMap.get("smallIcon"), null);
-        }
-
-        Integer price = null;
-        Object shopHistory = item.get("shopHistory");
-        Object priceObj = item.get("price");
-        if (priceObj instanceof Number n) {
-            price = n.intValue();
-        } else if (shopHistory != null) {
-            // quando vier da loja, às vezes o preço está em nested "regularPrice" / "finalPrice"
-            Object priceMap = item.get("price");
-            if (priceMap instanceof Map p) {
-                Object finalPrice = p.get("finalPrice");
-                if (finalPrice instanceof Number n2) price = n2.intValue();
-            }
-        }
-
-        Boolean isNew = null;
-        if (item.containsKey("new")) {
-            Object v = item.get("new");
-            if (v instanceof Boolean b) isNew = b; else isNew = Boolean.parseBoolean(v.toString());
-        }
-
-        Boolean isOnSale = null;
-        if (item.containsKey("offerTag")) {
-            isOnSale = true;
-        }
+        Integer price = extractPrice(item.get("price"), item.get("shopHistory"));
+        Boolean isNew = extractBoolean(item.get("new"));
+        Boolean isOnSale = item.containsKey("offerTag") && item.get("offerTag") != null ? Boolean.TRUE : extractBoolean(item.get("isOnSale"));
 
         return ComesticDTO.builder()
                 .id(id)
@@ -158,13 +111,89 @@ public class FortniteApiService {
                 .imageUrl(imageUrl)
                 .price(price)
                 .isNew(isNew)
-                .isOnSale(isOnSale)
+                .isOnSale(isOnSale != null && isOnSale)
                 .build();
     }
 
-    @Data
-    private static class FortniteResponse {
-        private Object status;
-        private List<Object> data;
+    private String extractValue(Object raw) {
+        if (raw instanceof Map<?, ?> map) {
+            Object value = map.get("value");
+            if (value != null) {
+                return Objects.toString(value, null);
+            }
+        }
+        return raw != null ? raw.toString() : null;
+    }
+
+    private String extractImageUrl(Object imagesObj) {
+        if (imagesObj instanceof Map<?, ?> imgMap) {
+            Object icon = imgMap.get("icon");
+            if (icon != null) {
+                return icon.toString();
+            }
+            Object smallIcon = imgMap.get("smallIcon");
+            if (smallIcon != null) {
+                return smallIcon.toString();
+            }
+        }
+        return null;
+    }
+
+    private Integer extractPrice(Object priceObj, Object shopHistory) {
+        if (priceObj instanceof Number number) {
+            return number.intValue();
+        }
+
+        if (priceObj instanceof Map<?, ?> priceMap) {
+            Object finalPrice = priceMap.get("finalPrice");
+            if (finalPrice instanceof Number number) {
+                return number.intValue();
+            }
+            Object regularPrice = priceMap.get("regularPrice");
+            if (regularPrice instanceof Number number) {
+                return number.intValue();
+            }
+        }
+
+        if (shopHistory instanceof List<?> history && !history.isEmpty()) {
+            Object last = history.get(history.size() - 1);
+            if (last instanceof Number number) {
+                return number.intValue();
+            }
+        }
+
+        return null;
+    }
+
+    private Boolean extractBoolean(Object raw) {
+        if (raw instanceof Boolean bool) {
+            return bool;
+        }
+        if (raw == null) {
+            return null;
+        }
+        if ("true".equalsIgnoreCase(raw.toString())) {
+            return Boolean.TRUE;
+        }
+        if ("false".equalsIgnoreCase(raw.toString())) {
+            return Boolean.FALSE;
+        }
+        return null;
+    }
+
+    private ComesticDTO withSaleFlag(ComesticDTO dto) {
+        return ComesticDTO.builder()
+                .id(dto.getId())
+                .name(dto.getName())
+                .type(dto.getType())
+                .rarity(dto.getRarity())
+                .imageUrl(dto.getImageUrl())
+                .price(dto.getPrice())
+                .isNew(dto.getIsNew())
+                .isOnSale(Boolean.TRUE)
+                .build();
+    }
+
+    private record FortniteSingleResponse(Map<String, Object> data) {
     }
 }
