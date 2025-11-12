@@ -10,6 +10,7 @@ import com.barbosa.desafio_tech.domain.mappers.UserMapper;
 import com.barbosa.desafio_tech.domain.repository.TransactionRepository;
 import com.barbosa.desafio_tech.domain.repository.UserComesticRepository;
 import com.barbosa.desafio_tech.domain.repository.UserRepository;
+import com.barbosa.desafio_tech.domain.service.serviceException.ResourceNotFoundException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -86,7 +87,7 @@ public class TransactionsService {
 
     private User loadUser(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado"));
+                .orElseThrow(() -> new ResourceNotFoundException(id));
     }
 
     public void recordTransaction(User user, Type type, int amount, String referenceId) {
