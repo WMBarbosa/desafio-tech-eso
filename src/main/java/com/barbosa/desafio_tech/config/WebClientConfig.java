@@ -43,7 +43,6 @@ public class WebClientConfig implements WebMvcConfigurer {
                         .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(maxInMemorySize))
                         .build());
 
-        // Adiciona API Key apenas se existir
         if (fortniteApiKey != null && !fortniteApiKey.isEmpty()) {
             builder.defaultHeader("x-api-key", fortniteApiKey);
         }
