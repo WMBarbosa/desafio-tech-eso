@@ -26,7 +26,7 @@ public class FortniteApiService {
     private final WebClient fortniteWebClient;
 
     public List<ComesticDTO> getAllCosmetics() {
-        return fetchCosmetics("/cosmetics/br", false);
+        return fetchCosmetics("/cosmetics", false);
     }
 
     public List<ComesticDTO> getNewCosmetics() {
