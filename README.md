@@ -197,3 +197,6 @@ Para executar o projeto em modo desenvolvimento (sem Docker):
 - Os usuários recebem automaticamente 10.000 V-Bucks ao serem criados
 - Todas as transações são registradas automaticamente no sistema
 - A aplicação utiliza validações Bean Validation para garantir a integridade dos dados
+
+
+

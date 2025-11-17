@@ -1,6 +1,7 @@
 package com.barbosa.desafio_tech.domain.entities;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.barbosa.desafio_tech.domain.entities.enums.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -27,6 +28,10 @@ public class User {
 
     @Column(nullable = false)
     private Integer vbucks;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.ROLE_USER;
 
     @Version
     private Long version;

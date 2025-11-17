@@ -3,6 +3,7 @@ package com.barbosa.desafio_tech.domain.service;
 import com.barbosa.desafio_tech.domain.dto.UserDTO;
 import com.barbosa.desafio_tech.domain.entities.User;
 import com.barbosa.desafio_tech.domain.entities.enums.Type;
+import com.barbosa.desafio_tech.domain.entities.enums.Role;
 import com.barbosa.desafio_tech.domain.mappers.UserMapper;
 import com.barbosa.desafio_tech.domain.repository.UserRepository;
 import com.barbosa.desafio_tech.domain.service.serviceException.DatabaseException;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +24,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final TransactionsService transactionsService;
+    private final PasswordEncoder passwordEncoder;
 
     private static final int INITIAL_CREDITS = 10_000;
 
@@ -43,7 +46,8 @@ public class UserService {
         User user = new User();
         user.setName(payload.getName());
         user.setEmail(payload.getEmail());
-        user.setPassword(payload.getPassword());
+        user.setPassword(passwordEncoder.encode(payload.getPassword()));
+        user.setRole(Role.ROLE_USER);
         user.setVbucks(INITIAL_CREDITS);
 
         User saved = userRepository.save(user);
@@ -81,7 +85,7 @@ public class UserService {
             user.setEmail(userDTO.getEmail());
         }
         if (userDTO.getPassword() != null && !userDTO.getPassword().isBlank()) {
-            user.setPassword(userDTO.getPassword());
+            user.setPassword(passwordEncoder.encode(userDTO.getPassword()));
         }
     }
 
