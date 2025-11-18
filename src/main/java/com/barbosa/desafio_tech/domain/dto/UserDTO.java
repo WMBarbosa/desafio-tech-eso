@@ -1,6 +1,7 @@
 package com.barbosa.desafio_tech.domain.dto;
 
 import com.barbosa.desafio_tech.domain.entities.User;
+import com.barbosa.desafio_tech.domain.entities.enums.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -29,5 +30,7 @@ public class UserDTO {
     @NotBlank(message = "A senha não pode estar vazia")
     @Size(min = 6, message = "A senha deve ter no mínimo 6 caracteres")
     private String password;
+
+    private Role role;
 
 }

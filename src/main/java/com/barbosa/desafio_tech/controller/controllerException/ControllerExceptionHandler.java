@@ -44,7 +44,7 @@ public class ControllerExceptionHandler {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         String message = e.getMessage() != null ? e.getMessage() : "Erro interno do servidor";
         CustomError err = new CustomError(Instant.now(), status.value(), message, request.getRequestURI());
-        e.printStackTrace(); // Log do erro para debug
+        e.printStackTrace();
         return ResponseEntity.status(status).body(err);
     }
 }

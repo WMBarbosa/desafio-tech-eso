@@ -31,7 +31,7 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Role role = Role.ROLE_USER;
+    private Role role;
 
     @Version
     private Long version;
